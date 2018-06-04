@@ -41,7 +41,7 @@ def reform_image(coco, img_path, anns):
             exclude_mask += coco.annToMask(ann)
         else:
             kp_list.append(keypoints)
-    exclude_mask = (exclude_mask > 0).astype(np.uint8)
+    exclude_mask = (exclude_mask == 0).astype(np.uint8)
     return transform(img, exclude_mask, kp_list)
 
 
