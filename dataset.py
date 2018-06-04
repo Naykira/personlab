@@ -80,7 +80,7 @@ def transform(img, exclude_mask, kp_list):
             xm = x[mm]
             y_i = (ym + cy).astype('i')
             x_i = (xm + cx).astype('i')
-            hm[y_i, x_i] = 1
+            hm[y_i, x_i, kp_i] = 1
             so_x[y_i, x_i, kp_i] = -xm
             so_y[y_i, x_i, kp_i] = -ym
 
