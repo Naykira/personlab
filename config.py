@@ -12,7 +12,7 @@ KP_LB = 5
 FACE_KP_LB = 0
 BODY_KP_LB = 0
 
-NUM_EDGE = 17
+NUM_EDGE = 19
 EDGES = np.array([
     (0, 1),
     (0, 2),
@@ -34,6 +34,8 @@ EDGES = np.array([
 
     (13, 15),
     (14, 16),
+    (5, 6),
+    (11, 12)
 ])
 
 RADIUS = 5
