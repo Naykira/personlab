@@ -38,7 +38,7 @@ EDGES = np.array([
     (11, 12)
 ])
 
-RADIUS = 5
+RADIUS = 32
 
 
 COCO_FILES = [

@@ -47,11 +47,12 @@ def reform_image(coco, img_path, anns):
 
 def transform(img, exclude_mask, kp_list):
     h, w, d = img.shape
-    m = np.array([[1., 0., config.TAR_H//2], [0., 1., config.TAR_W//2], [0., 0., 1.]]) # tranform to 0,0
+    m = np.identity(3)
+    m = m.dot(np.array([[1., 0., config.TAR_W//2], [0., 1., config.TAR_H//2], [0., 0., 1.]])) # tranform to 0,0
     if random.randint(0, 1) == 0:
         m = m.dot(np.array([[-1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])) # flip
-    m = m.dot(np.array([[config.TAR_H/h, 0., 0.], [0., config.TAR_W/w, 0.], [0., 0., 1.]])) # scale
-    m = m.dot(np.array([[1., 0., -h//2], [0., 1., -w//2], [0., 0., 1.]])) # transform to center
+    m = m.dot(np.array([[config.TAR_W/w, 0., 0.], [0., config.TAR_H/h, 0.], [0., 0., 1.]])) # scale
+    m = m.dot(np.array([[1., 0., -w//2], [0., 1., -h//2], [0., 0., 1.]])) # transform to center
 
     img = cv.warpAffine(img, m[0:2], (config.TAR_W, config.TAR_H))
     exclude_mask = cv.warpAffine(exclude_mask, m[0:2], (config.TAR_W, config.TAR_H))
@@ -72,8 +73,8 @@ def transform(img, exclude_mask, kp_list):
         for kp_i in range(config.NUM_KP):
             if kp[2, kp_i] == 0:
                 continue
-            cy = np.round(kp[0, kp_i])
-            cx = np.round(kp[1, kp_i])
+            cx = np.round(kp[0, kp_i])
+            cy = np.round(kp[1, kp_i])
             mm = (0 <= x + cx) & (x + cx < config.TAR_W) & \
                  (0 <= y + cy) & (y + cy < config.TAR_H) & m
             ym = y[mm]
@@ -89,8 +90,8 @@ def transform(img, exclude_mask, kp_list):
             k_j = config.EDGES[e_i, 1]
             if kp[2, k_i] == 0 or kp[2, k_j] == 0:
                 continue
-            cy = np.round(kp[0, kp_i])
-            cx = np.round(kp[1, kp_i])
+            cx = np.round(kp[0, kp_i])
+            cy = np.round(kp[1, kp_i])
             mm = (0 <= x + cx) & (x + cx < config.TAR_W) & \
                  (0 <= y + cy) & (y + cy < config.TAR_H) & m
             ym = y[mm]
