@@ -51,7 +51,8 @@ def transform(img, exclude_mask, kp_list):
     m = m.dot(np.array([[1., 0., config.TAR_W//2], [0., 1., config.TAR_H//2], [0., 0., 1.]])) # tranform to 0,0
     if random.randint(0, 1) == 0:
         m = m.dot(np.array([[-1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])) # flip
-    m = m.dot(np.array([[config.TAR_W/w, 0., 0.], [0., config.TAR_H/h, 0.], [0., 0., 1.]])) # scale
+    sf = random.uniform(0.7, 1.3)
+    m = m.dot(np.array([[sf, 0., 0.], [0., sf, 0.], [0., 0., 1.]])) # scale
     m = m.dot(np.array([[1., 0., -w//2], [0., 1., -h//2], [0., 0., 1.]])) # transform to center
 
     img = cv.warpAffine(img, m[0:2], (config.TAR_W, config.TAR_H))
