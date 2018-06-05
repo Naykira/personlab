@@ -1,7 +1,7 @@
 import numpy as np
 
-TAR_H = 800
-TAR_W = 800
+TAR_H = 401
+TAR_W = 401
 
 NUM_KP = 17
 KP_NAMES = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',

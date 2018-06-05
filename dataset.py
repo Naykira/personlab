@@ -52,6 +52,7 @@ def transform(img, exclude_mask, kp_list):
     if random.randint(0, 1) == 0:
         m = m.dot(np.array([[-1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])) # flip
     sf = random.uniform(0.7, 1.3)
+    sf = max(sf, min(config.TAR_W/w, config.TAR_H/h))
     m = m.dot(np.array([[sf, 0., 0.], [0., sf, 0.], [0., 0., 1.]])) # scale
     m = m.dot(np.array([[1., 0., -w//2], [0., 1., -h//2], [0., 0., 1.]])) # transform to center
 
