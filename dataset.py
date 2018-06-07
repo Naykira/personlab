@@ -8,20 +8,23 @@ from pycocotools.coco import COCO
 
 
 def load():
-    for name, ann_file, img_dir in config.COCO_FILES:
-        coco = COCO(ann_file)
-        cat_ids = coco.getCatIds(catNms=['person'])
-        img_ids = coco.getImgIds(catIds=cat_ids)
-        img_infos = coco.loadImgs(img_ids)
+    while True:
+        for name, ann_file, img_dir in config.COCO_FILES:
+            coco = COCO(ann_file)
+            cat_ids = coco.getCatIds(catNms=['person'])
+            img_ids = coco.getImgIds(catIds=cat_ids)
+            img_infos = coco.loadImgs(img_ids)
 
-        kp_list = []
-        img_pack_list = []
-        for img_info in img_infos:
-            img_id = img_info['id']
-            img_path = img_dir + '/' + img_info['file_name']
-            ann_ids = coco.getAnnIds(imgIds=img_id, catIds=cat_ids)
-            anns = coco.loadAnns(ann_ids)
-            yield reform_image(coco, img_path, anns)
+            kp_list = []
+            img_pack_list = []
+            for img_info in img_infos:
+                img_id = img_info['id']
+                img_path = img_dir + '/' + img_info['file_name']
+                ann_ids = coco.getAnnIds(imgIds=img_id, catIds=cat_ids)
+                anns = coco.loadAnns(ann_ids)
+                res = reform_image(coco, img_path, anns)
+                if res is not None:
+                    yield res
 
 
 def reform_image(coco, img_path, anns):
@@ -31,17 +34,22 @@ def reform_image(coco, img_path, anns):
     exclude_mask = np.zeros((height, width))
     kp_list = []
     for ann in anns:
+        if ann['iscrowd'] or ann['area'] < config.AREA_LB:
+            exclude_mask += coco.annToMask(ann)
+            continue
         keypoints = ann['keypoints']
         keypoints = np.transpose(np.reshape(keypoints, (config.NUM_KP, 3)))
         keypoints[2] = keypoints[2] == 2
         kp_sum = np.sum(keypoints[2])
         face_kp_sum = np.sum(keypoints[2, :5])
         body_kp_sum = np.sum(keypoints[2, 5:])
-        if ann['iscrowd'] or kp_sum < config.KP_LB or face_kp_sum < config.FACE_KP_LB or body_kp_sum < config.BODY_KP_LB:
+        if kp_sum < config.KP_LB or face_kp_sum < config.FACE_KP_LB or body_kp_sum < config.BODY_KP_LB:
             exclude_mask += coco.annToMask(ann)
         else:
             kp_list.append(keypoints)
     exclude_mask = (exclude_mask == 0).astype(np.uint8)
+    if len(kp_list) == 0:
+        return None
     return transform(img, exclude_mask, kp_list)
 
 

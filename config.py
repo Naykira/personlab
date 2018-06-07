@@ -11,6 +11,7 @@ KP_NAMES = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
 KP_LB = 5
 FACE_KP_LB = 0
 BODY_KP_LB = 0
+AREA_LB = 3000
 
 NUM_EDGE = 19
 EDGES = np.array([
@@ -40,11 +41,14 @@ EDGES = np.array([
 
 RADIUS = 32
 
+COCO_FILES = []
+COCO_FILES.append(('train2017','annotations/person_keypoints_train2017.json', 'train2017'))
+#COCO_FILES.append(('val2017', '../KerasPersonLab/ANNO_FILE/person_keypoints_val2017.json', '../KerasPersonLab/IMG_DIR/val2017/'))
 
-COCO_FILES = [
-    ('train2017',
-     'annotations/person_keypoints_train2017.json',
-     'train2017')
-]
+NUM_GPUS = 1
 BATCH_SIZE = 2
 PREFETCH_SIZE = 1
+
+HEATMAP_LOSS_WEIGHT = 4.0
+SHORT_OFFSET_LOSS_WEIGHT = 1.0
+MIDDLE_OFFSET_LOSS_WEIGHT = 0.5
