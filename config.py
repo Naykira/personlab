@@ -1,9 +1,9 @@
 import numpy as np
 
-TAR_H = 320
-TAR_W = 320
+TAR_H = 224
+TAR_W = 224
 
-NUM_KP = 24
+NUM_KP = 15
 KP_NAMES = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
     'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow', 'left_wrist',
     'right_wrist', 'left_hip', 'right_hip', 'left_knee', 'right_knee',
@@ -39,14 +39,14 @@ EDGES = np.array([
     (11, 12)
 ])
 
-RADIUS = 8
+RADIUS = 3
 
 COCO_FILES = []
 COCO_FILES.append(('train2017','annotations/person_keypoints_train2017.json', 'train2017'))
 #COCO_FILES.append(('val2017', '../KerasPersonLab/ANNO_FILE/person_keypoints_val2017.json', '../KerasPersonLab/IMG_DIR/val2017/'))
 
 NUM_GPUS = 1
-BATCH_SIZE = 2
+BATCH_SIZE = 1
 PREFETCH_SIZE = 1
 
 HEATMAP_LOSS_WEIGHT = 4.0
@@ -56,4 +56,38 @@ MIDDLE_OFFSET_LOSS_WEIGHT = 0.5
 
 SURREAL_H = 240
 SURREAL_W = 320
-DATA_BASE_DIR = '/home/ubuntu/data/s2/cmu/train/'
+DATA_BASE_DIR = '/home/syd/work/personlab/cmu/train/'
+
+ 
+SURREAL_KP_MAP = [
+    15, #턱 0
+    12, #목 1
+    9,  #가슴 2
+    16, 18, 20, #왼쪽 어깨, 팔꿈치, 손목 3 4 5
+    17, 19, 21, #오른쪽 어깨, 팔꿈치, 손목 6 7 8
+    3, #배 9
+    1, 4, 7, #왼쪽 엉덩이, 무릎, 발목 10 11 12
+    2, 5, 8, #왼쪽 엉덩이, 무릎, 발목 13 14 15
+]
+SURREAL_EDGE = np.array([
+    (0, 1),
+    (1, 2),
+    (2, 3),
+    (3, 4),
+    (4, 5),
+    (2, 6),
+    (6, 7),
+    (7, 8),
+    (2, 9),
+    (9, 10),
+    (10, 11),
+    (11, 12),
+    (9, 13),
+    (13, 14),
+    (14, 15),
+])
+EDGES = SURREAL_EDGE
+
+NUM_KP = 16
+NUM_EDGE = 15
+MAX_FRAME_SIZE = 10

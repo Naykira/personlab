@@ -1,4 +1,4 @@
-import random, os
+import random, os, itertools
 import config
 import tensorflow as tf
 import numpy as np
@@ -22,25 +22,29 @@ def load():
     path_list = get_file_list(config.DATA_BASE_DIR)
     X = np.tile(np.arange(config.SURREAL_W), [config.SURREAL_H, 1])
     Y = np.tile(np.arange(config.SURREAL_H), [config.SURREAL_W, 1]).transpose()
-    for p in path_list:
+    for p in itertools.cycle(path_list):
         cap = cv.VideoCapture(p + '.mp4')
+        
         frames = []
-        while(cap.isOpened()):
+        while(True):
             ret, frame = cap.read()
             if not ret:
                 break
             frames.append(frame)
         frames = np.array(frames)
         num_frame = len(frames)
-
+        if num_frame < config.MAX_FRAME_SIZE:
+            continue
+            
+        info = sio.loadmat(p + '_info.mat')
         seg = sio.loadmat(p + '_segm.mat')
         kp_list = []
-        for f_i in range(1, num_frame + 1):
+        for f_i in range(num_frame):
             kps = []
-            for k_i in range(1, 25):
-                if np.sum(seg['segm_%d' % f_i] == k_i) > 0:
-                    x = np.mean(X[seg['segm_%d' % f_i] == k_i])
-                    y = np.mean(Y[seg['segm_%d' % f_i] == k_i])
+            for k_i, sk_i in enumerate(config.SURREAL_KP_MAP):
+                if np.sum(seg['segm_%d' % (f_i + 1)] == (sk_i + 1)) > 0:
+                    x = info['joints2D'][0, sk_i, f_i]
+                    y = info['joints2D'][1, sk_i, f_i]
                     c = 2
                 else:
                     x = 0
@@ -48,12 +52,14 @@ def load():
                     c = 0
                 kps.append((x, y, c))
             kp_list.append([np.array(kps)])
-        yield transform(frames, kp_list)
+        for i in range(num_frame // config.MAX_FRAME_SIZE):
+            f_i_s = i * config.MAX_FRAME_SIZE
+            f_i_e = f_i_s + config.MAX_FRAME_SIZE
+            yield transform(frames[f_i_s:f_i_e,...], kp_list[f_i_s:f_i_e])
 
         
 def transform(frames, kp_list):
     fn, h, w, d = frames.shape
-    
     is_flip = random.randint(0, 1) == 0
     sf = random.uniform(1, 1.3)
     sf = min(config.TAR_W/w, config.TAR_H/h) * sf
@@ -91,7 +97,6 @@ def transform(frames, kp_list):
     so_y = np.zeros([fn, config.TAR_H, config.TAR_W, config.NUM_KP]).astype('i')
     mo_x = np.zeros([fn, config.TAR_H, config.TAR_W, config.NUM_EDGE]).astype('i')
     mo_y = np.zeros([fn, config.TAR_H, config.TAR_W, config.NUM_EDGE]).astype('i')
-    print('@@@@@@@@@@@@@@@@@@@@@')
     for f_i in range(fn):
         for kp in kp_list[f_i]:
             for kp_i in range(config.NUM_KP):
@@ -126,6 +131,5 @@ def transform(frames, kp_list):
                 dx = kp[1, k_j] - cx
                 mo_x[f_i, y_i, x_i, e_i] = -xm + dx
                 mo_y[f_i, y_i, x_i, e_i] = -ym + dy
-    res = np.stack([frames, hm, so_x, so_y, mo_x, mo_y], axis=-1)
-    print(res)
-    return res
+    return (frames, hm, so_x, so_y, mo_x, mo_y, len(frames))
+
