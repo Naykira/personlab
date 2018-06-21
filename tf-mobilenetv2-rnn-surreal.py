@@ -4,8 +4,6 @@
 # In[1]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '')
 import tensorflow as tf
 import numpy as np
 import surreal, config
@@ -91,12 +89,15 @@ class TestCell(tf.contrib.rnn.RNNCell):
         
         # parse expectation from previous frame
         state = tf.reshape(state, RESULT_SHAPE)
+        print(mbnet2_output, state)
+        mbnet2_output = tf.concat([mbnet2_output, state], axis=-1)
         hm_prev, so_x_prev, so_y_prev, mo_x_prev, mo_y_prev = tf.split(state, DEPTH, axis=-1)
         
         # prediction of current frame
         hm_pred = slim.conv2d(mbnet2_output, config.NUM_KP, [1, 1])
         #hm_pred = slim.batch_norm(hm_pred, is_training=self.is_training)
         hm_pred = hm_pred + hm_prev
+        hm_pred = tf.clip_by_value(hm_pred, 0, 1)
         
         so_x_pred = slim.conv2d(mbnet2_output, config.NUM_KP, [1, 1])
         #so_x_pred = slim.batch_norm(so_x_pred, is_training=self.is_training)
@@ -184,7 +185,8 @@ hm_out, so_x_out, so_y_out, mo_x_out, mo_y_out = tf.split(pred_sum, DEPTH, axis=
 # In[6]:
 
 
-tf.losses.softmax_cross_entropy(tensors['hm'], hm_out, weights=4.0)
+#tf.losses.log_loss(tensors['hm'], hm_out, weights=4.0, epsilon=1e-04)
+#tf.losses.softmax_cross_entropy(tensors['hm'], hm_out, weights=4.0)
 tf.losses.absolute_difference(tensors['so_x'], so_x_out, weights=1.0 / config.RADIUS)
 tf.losses.absolute_difference(tensors['so_y'], so_y_out, weights=1.0 / config.RADIUS)
 tf.losses.absolute_difference(tensors['mo_x'], mo_x_out, weights=0.5 / config.RADIUS)
@@ -243,7 +245,7 @@ def InitAssignFn(sess):
 tf.contrib.slim.learning.train(train_op,
                                '/home/ubuntu/personlab/'+log_dir,
                                init_fn=InitAssignFn,
-                               log_every_n_steps=100,
+                               log_every_n_steps=1,
                                save_summaries_secs=30,
                               )
 

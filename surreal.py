@@ -57,14 +57,12 @@ def load():
             f_i_s = i * config.MAX_FRAME_SIZE
             f_i_e = f_i_s + config.MAX_FRAME_SIZE
             kp_part = kp_list[f_i_s:f_i_e]
-            if np.count_nonzero(kp_part[...,2]) < config.KP_LB * num_frame:
-                print(np.count_nonzero(kp_part[...,2]))
+            if np.count_nonzero(kp_part[...,2]) < config.KP_LB * config.MAX_FRAME_SIZE:
                 continue
-            frames, hm, so_x, so_y, mo_x, mo_y, num_frames = transform(frames[f_i_s:f_i_e,...], kp_list[f_i_s:f_i_e])
-            if np.sum(hm) < config.AREA_LB * num_frame:
-                print(np.sum(hm))
+            img, hm, so_x, so_y, mo_x, mo_y, num_frames = transform(frames[f_i_s:f_i_e,...], kp_part)
+            if np.sum(hm) < config.AREA_LB * config.MAX_FRAME_SIZE:
                 continue
-            yield frames, hm, so_x, so_y, mo_x, mo_y, num_frames
+            yield img, hm, so_x, so_y, mo_x, mo_y, num_frames
 
         
 def transform(frames, kp_list):
