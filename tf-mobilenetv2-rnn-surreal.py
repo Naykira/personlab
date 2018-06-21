@@ -4,6 +4,8 @@
 # In[1]:
 
 
+get_ipython().run_line_magic('load_ext', 'autoreload')
+get_ipython().run_line_magic('autoreload', '')
 import tensorflow as tf
 import numpy as np
 import surreal, config
@@ -31,7 +33,7 @@ TENSOR_INFO = [
     },{
         'name': 'hm',
         'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_KP),
-        'type': tf.float32,
+        'type': tf.int32,
     },{
         'name': 'so_x',
         'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_KP),
@@ -68,11 +70,38 @@ for tensor, info in zip(input_tensors, TENSOR_INFO):
 
 config.STRIDE = 16
 
+TENSOR_INFO = [
+    {
+        'name': 'hm_0',
+        'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_KP),
+        'type': tf.float32,
+    },{
+        'name': 'hm_1',
+        'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_KP),
+        'type': tf.float32,
+    },{
+        'name': 'so_x',
+        'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_KP),
+        'type': tf.float32,
+    },{
+        'name': 'so_y',
+        'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_KP),
+        'type': tf.float32,
+    },{
+        'name': 'mo_x',
+        'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_EDGE),
+        'type': tf.float32,
+    },{
+        'name': 'mo_y',
+        'shape': (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, config.NUM_EDGE),
+        'type': tf.float32,
+    }
+]
 
 MD_H = int(config.TAR_H/config.STRIDE)
 MD_W = int(config.TAR_W/config.STRIDE)
 
-DEPTH = [ti['shape'][-1] for ti in TENSOR_INFO[1:-1]]
+DEPTH = [ti['shape'][-1] for ti in TENSOR_INFO]
 RESULT_SHAPE = (config.BATCH_SIZE, MD_H, MD_W, sum(DEPTH))
 RESULT_SIZE = functools.reduce(operator.mul, RESULT_SHAPE[1:])
 OUTPUT_SHAPE = (config.BATCH_SIZE, config.TAR_H, config.TAR_W, sum(DEPTH))
@@ -89,15 +118,12 @@ class TestCell(tf.contrib.rnn.RNNCell):
         
         # parse expectation from previous frame
         state = tf.reshape(state, RESULT_SHAPE)
-        print(mbnet2_output, state)
         mbnet2_output = tf.concat([mbnet2_output, state], axis=-1)
-        hm_prev, so_x_prev, so_y_prev, mo_x_prev, mo_y_prev = tf.split(state, DEPTH, axis=-1)
+        _, _, so_x_prev, so_y_prev, mo_x_prev, mo_y_prev = tf.split(state, DEPTH, axis=-1)
         
         # prediction of current frame
-        hm_pred = slim.conv2d(mbnet2_output, config.NUM_KP, [1, 1])
-        #hm_pred = slim.batch_norm(hm_pred, is_training=self.is_training)
-        hm_pred = hm_pred + hm_prev
-        hm_pred = tf.clip_by_value(hm_pred, 0, 1)
+        hm_0_pred = slim.conv2d(mbnet2_output, config.NUM_KP, [1, 1])
+        hm_1_pred = slim.conv2d(mbnet2_output, config.NUM_KP, [1, 1])
         
         so_x_pred = slim.conv2d(mbnet2_output, config.NUM_KP, [1, 1])
         #so_x_pred = slim.batch_norm(so_x_pred, is_training=self.is_training)
@@ -126,9 +152,9 @@ class TestCell(tf.contrib.rnn.RNNCell):
         mvp_x = tf.cast(tf.clip_by_value(tf.round(cur_x + mv_x_pred), 0, MD_W-1), 'int32')
         mvp_y = tf.cast(tf.clip_by_value(tf.round(cur_y + mv_y_pred), 0, MD_H-1), 'int32')
         mvp = tf.concat([mvp_b, mvp_x, mvp_y], axis=-1)
-        hm_expect = tf.scatter_nd(mvp, hm_pred, hm_pred.shape)
+        hm_0_expect = tf.scatter_nd(mvp, hm_0_pred, hm_0_pred.shape)
+        hm_1_expect = tf.scatter_nd(mvp, hm_1_pred, hm_1_pred.shape)
         so_x_expect = tf.scatter_nd(mvp, so_x_pred, so_x_pred.shape)
-        print(mvp, so_y_pred)
         so_y_expect = tf.scatter_nd(mvp, so_y_pred, so_y_pred.shape)
         
         mo_end_b = np.tile(np.arange(config.BATCH_SIZE), [MD_H, MD_W, config.NUM_EDGE, 1]).transpose([3, 0, 1, 2])
@@ -140,10 +166,10 @@ class TestCell(tf.contrib.rnn.RNNCell):
         mo_x_expect = tf.scatter_nd(mvp, mo_x_expect_cp, mo_x_pred.shape)
         mo_y_expect = tf.scatter_nd(mvp, mo_y_expect_cp, mo_y_pred.shape)
         
-        next_state = tf.concat([hm_expect, so_x_expect, so_y_expect, mo_x_expect, mo_y_expect], axis=-1)
+        next_state = tf.concat([hm_0_expect, hm_1_expect, so_x_expect, so_y_expect, mo_x_expect, mo_y_expect], axis=-1)
         next_state = tf.reshape(next_state, [config.BATCH_SIZE, RESULT_SIZE])
 
-        output = tf.concat([hm_pred, so_x_pred, so_y_pred, mo_x_pred, mo_y_pred], axis=-1)
+        output = tf.concat([hm_0_pred, hm_1_pred, so_x_pred, so_y_pred, mo_x_pred, mo_y_pred], axis=-1)
         output = tf.image.resize_images(
             output,
             (config.TAR_H, config.TAR_W),
@@ -179,14 +205,20 @@ pred_sum
 
 TOTAL_SHAPE = (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, sum(DEPTH))
 pred_sum = tf.reshape(pred_sum, TOTAL_SHAPE)
-hm_out, so_x_out, so_y_out, mo_x_out, mo_y_out = tf.split(pred_sum, DEPTH, axis=-1)
+hm_0_out, hm_1_out, so_x_out, so_y_out, mo_x_out, mo_y_out = tf.split(pred_sum, DEPTH, axis=-1)
 
 
 # In[6]:
 
 
-#tf.losses.log_loss(tensors['hm'], hm_out, weights=4.0, epsilon=1e-04)
-#tf.losses.softmax_cross_entropy(tensors['hm'], hm_out, weights=4.0)
+hm_out = tf.stack([hm_0_out, hm_1_out], axis=-1)
+hm_true = tf.one_hot(tensors['hm'], 2)
+
+
+# In[7]:
+
+
+tf.losses.softmax_cross_entropy(hm_true, hm_out, weights=4.0)
 tf.losses.absolute_difference(tensors['so_x'], so_x_out, weights=1.0 / config.RADIUS)
 tf.losses.absolute_difference(tensors['so_y'], so_y_out, weights=1.0 / config.RADIUS)
 tf.losses.absolute_difference(tensors['mo_x'], mo_x_out, weights=0.5 / config.RADIUS)
@@ -194,7 +226,7 @@ tf.losses.absolute_difference(tensors['mo_y'], mo_y_out, weights=0.5 / config.RA
 tf.losses.get_losses()
 
 
-# In[7]:
+# In[8]:
 
 
 losses = tf.losses.get_losses()
@@ -204,15 +236,15 @@ loss = tf.losses.get_total_loss()
 tf.summary.scalar('losses/total_loss', loss)
 
 
-# In[ ]:
+# In[9]:
 
 
 tf.summary.scalar('val/hm_sum', tf.reduce_sum(hm_out))
-tf.summary.scalar('val/so_sum', tf.abs(tf.reduce_sum(so_x_out)) + tf.abs(tf.reduce_sum(so_y_out)))
-tf.summary.scalar('val/mo_sum', tf.abs(tf.reduce_sum(mo_x_out)) + tf.abs(tf.reduce_sum(mo_y_out)))
+tf.summary.scalar('val/so_sum', tf.reduce_sum(tf.abs(so_x_out)) + tf.reduce_sum(tf.abs(so_y_out)))
+tf.summary.scalar('val/mo_sum', tf.reduce_sum(tf.abs(mo_x_out)) + tf.reduce_sum(tf.abs(mo_y_out)))
 tf.summary.scalar('val/hm_true_sum', tf.reduce_sum(tensors['hm']))
-tf.summary.scalar('val/so_true_sum', tf.abs(tf.reduce_sum(tensors['so_x'])) + tf.abs(tf.reduce_sum(tensors['so_y'])))
-tf.summary.scalar('val/mo_true_sum', tf.abs(tf.reduce_sum(tensors['mo_x'])) + tf.abs(tf.reduce_sum(tensors['mo_y'])))
+tf.summary.scalar('val/so_true_sum', tf.reduce_sum(tf.abs(tensors['so_x'])) + tf.reduce_sum(tf.abs(tensors['so_y'])))
+tf.summary.scalar('val/mo_true_sum', tf.reduce_sum(tf.abs(tensors['mo_x'])) + tf.reduce_sum(tf.abs(tensors['mo_y'])))
 optimizer = tf.train.AdamOptimizer()
 train_op = slim.learning.create_train_op(loss, optimizer)
 
@@ -228,7 +260,7 @@ for v in variables:
 init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_path, restore_map)
 
 
-# In[8]:
+# In[10]:
 
 
 import time, os
@@ -237,7 +269,7 @@ log_dir = 'logs/log_' + str(time.time())[-5:]
 os.mkdir(log_dir)
 
 
-# In[ ]:
+# In[11]:
 
 
 def InitAssignFn(sess):
@@ -245,7 +277,7 @@ def InitAssignFn(sess):
 tf.contrib.slim.learning.train(train_op,
                                '/home/ubuntu/personlab/'+log_dir,
                                init_fn=InitAssignFn,
-                               log_every_n_steps=1,
+                               log_every_n_steps=100,
                                save_summaries_secs=30,
                               )
 
