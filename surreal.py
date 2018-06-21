@@ -19,7 +19,7 @@ def get_file_list(path):
     
 
 def load():
-    path_list = get_file_list(config.DATA_BASE_DIR)
+    path_list = get_file_list(config.TRAIN_DATA_BASE_DIR)
     X = np.tile(np.arange(config.SURREAL_W), [config.SURREAL_H, 1])
     Y = np.tile(np.arange(config.SURREAL_H), [config.SURREAL_W, 1]).transpose()
     for p in itertools.cycle(path_list):
@@ -52,10 +52,19 @@ def load():
                     c = 0
                 kps.append((x, y, c))
             kp_list.append([np.array(kps)])
+        kp_list = np.array(kp_list)
         for i in range(num_frame // config.MAX_FRAME_SIZE):
             f_i_s = i * config.MAX_FRAME_SIZE
             f_i_e = f_i_s + config.MAX_FRAME_SIZE
-            yield transform(frames[f_i_s:f_i_e,...], kp_list[f_i_s:f_i_e])
+            kp_part = kp_list[f_i_s:f_i_e]
+            if np.count_nonzero(kp_part[...,2]) < config.KP_LB * num_frame:
+                print(np.count_nonzero(kp_part[...,2]))
+                continue
+            frames, hm, so_x, so_y, mo_x, mo_y, num_frames = transform(frames[f_i_s:f_i_e,...], kp_list[f_i_s:f_i_e])
+            if np.sum(hm) < config.AREA_LB * num_frame:
+                print(np.sum(hm))
+                continue
+            yield frames, hm, so_x, so_y, mo_x, mo_y, num_frames
 
         
 def transform(frames, kp_list):
