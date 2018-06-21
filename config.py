@@ -1,7 +1,7 @@
 import numpy as np
 
-TAR_H = 224
-TAR_W = 224
+TAR_H = 400
+TAR_W = 400
 
 NUM_KP = 15
 KP_NAMES = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
@@ -11,7 +11,7 @@ KP_NAMES = ['nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear',
 KP_LB = 5
 FACE_KP_LB = 0
 BODY_KP_LB = 0
-AREA_LB = 3000
+AREA_LB = 4000
 
 NUM_EDGE = 19
 EDGES = np.array([
@@ -39,7 +39,7 @@ EDGES = np.array([
     (11, 12)
 ])
 
-RADIUS = 3
+RADIUS = 32
 
 COCO_FILES = []
 COCO_FILES.append(('train2017','annotations/person_keypoints_train2017.json', 'train2017'))
@@ -56,9 +56,10 @@ MIDDLE_OFFSET_LOSS_WEIGHT = 0.5
 
 SURREAL_H = 240
 SURREAL_W = 320
-DATA_BASE_DIR = '/home/syd/work/personlab/cmu/train/'
+TRAIN_DATA_BASE_DIR = '/home/ubuntu/personlab/cmu/train/'
+VAL_DATA_BASE_DIR = '/home/ubuntu/personlab/cmu/val/'
 
- 
+
 SURREAL_KP_MAP = [
     15, #턱 0
     12, #목 1
@@ -90,4 +91,4 @@ EDGES = SURREAL_EDGE
 
 NUM_KP = 16
 NUM_EDGE = 15
-MAX_FRAME_SIZE = 10
+MAX_FRAME_SIZE = 5

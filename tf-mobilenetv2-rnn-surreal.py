@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[4]:
+# In[1]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -11,12 +11,18 @@ import numpy as np
 import surreal, config
 import functools, operator, copy
 import tensorflow.contrib.slim as slim
+from nets.resnet_v2 import resnet_v2_101
 from nets.mobilenet import mobilenet_v2
 
 tf.reset_default_graph()
+'''
+for x in surreal.load():
+    print(x)
+    break
+'''
 
 
-# In[5]:
+# In[2]:
 
 
 TENSOR_INFO = [
@@ -59,7 +65,7 @@ for tensor, info in zip(input_tensors, TENSOR_INFO):
     tensors[info['name']] = tensor
 
 
-# In[6]:
+# In[3]:
 
 
 config.STRIDE = 16
@@ -85,7 +91,6 @@ class TestCell(tf.contrib.rnn.RNNCell):
         
         # parse expectation from previous frame
         state = tf.reshape(state, RESULT_SHAPE)
-        mbnet2_output = tf.concat([state, mbnet2_output], axis=-1)
         hm_prev, so_x_prev, so_y_prev, mo_x_prev, mo_y_prev = tf.split(state, DEPTH, axis=-1)
         
         # prediction of current frame
@@ -122,6 +127,7 @@ class TestCell(tf.contrib.rnn.RNNCell):
         mvp = tf.concat([mvp_b, mvp_x, mvp_y], axis=-1)
         hm_expect = tf.scatter_nd(mvp, hm_pred, hm_pred.shape)
         so_x_expect = tf.scatter_nd(mvp, so_x_pred, so_x_pred.shape)
+        print(mvp, so_y_pred)
         so_y_expect = tf.scatter_nd(mvp, so_y_pred, so_y_pred.shape)
         
         mo_end_b = np.tile(np.arange(config.BATCH_SIZE), [MD_H, MD_W, config.NUM_EDGE, 1]).transpose([3, 0, 1, 2])
@@ -161,13 +167,13 @@ test_cell = TestCell(is_training=True)
 pred_sum, _ = tf.nn.dynamic_rnn(test_cell, tensors['image'], sequence_length=tensors['seq_len'], dtype=tf.float32)
 
 
-# In[7]:
+# In[4]:
 
 
 pred_sum
 
 
-# In[8]:
+# In[5]:
 
 
 TOTAL_SHAPE = (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, sum(DEPTH))
@@ -175,22 +181,36 @@ pred_sum = tf.reshape(pred_sum, TOTAL_SHAPE)
 hm_out, so_x_out, so_y_out, mo_x_out, mo_y_out = tf.split(pred_sum, DEPTH, axis=-1)
 
 
-# In[9]:
+# In[6]:
 
 
 tf.losses.softmax_cross_entropy(tensors['hm'], hm_out, weights=4.0)
-tf.losses.absolute_difference(tensors['so_x'], so_x_out, weights=1.0)
-tf.losses.absolute_difference(tensors['so_y'], so_y_out, weights=1.0)
-tf.losses.absolute_difference(tensors['mo_x'], mo_x_out, weights=0.5)
-tf.losses.absolute_difference(tensors['mo_y'], mo_y_out, weights=0.5)
+tf.losses.absolute_difference(tensors['so_x'], so_x_out, weights=1.0 / config.RADIUS)
+tf.losses.absolute_difference(tensors['so_y'], so_y_out, weights=1.0 / config.RADIUS)
+tf.losses.absolute_difference(tensors['mo_x'], mo_x_out, weights=0.5 / config.RADIUS)
+tf.losses.absolute_difference(tensors['mo_y'], mo_y_out, weights=0.5 / config.RADIUS)
 tf.losses.get_losses()
 
 
-# In[10]:
+# In[7]:
 
 
+losses = tf.losses.get_losses()
+for l in losses:
+    tf.summary.scalar(l.name, l)
 loss = tf.losses.get_total_loss()
 tf.summary.scalar('losses/total_loss', loss)
+
+
+# In[ ]:
+
+
+tf.summary.scalar('val/hm_sum', tf.reduce_sum(hm_out))
+tf.summary.scalar('val/so_sum', tf.abs(tf.reduce_sum(so_x_out)) + tf.abs(tf.reduce_sum(so_y_out)))
+tf.summary.scalar('val/mo_sum', tf.abs(tf.reduce_sum(mo_x_out)) + tf.abs(tf.reduce_sum(mo_y_out)))
+tf.summary.scalar('val/hm_true_sum', tf.reduce_sum(tensors['hm']))
+tf.summary.scalar('val/so_true_sum', tf.abs(tf.reduce_sum(tensors['so_x'])) + tf.abs(tf.reduce_sum(tensors['so_y'])))
+tf.summary.scalar('val/mo_true_sum', tf.abs(tf.reduce_sum(tensors['mo_x'])) + tf.abs(tf.reduce_sum(tensors['mo_y'])))
 optimizer = tf.train.AdamOptimizer()
 train_op = slim.learning.create_train_op(loss, optimizer)
 
@@ -206,7 +226,7 @@ for v in variables:
 init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_path, restore_map)
 
 
-# In[11]:
+# In[8]:
 
 
 import time, os
@@ -215,13 +235,13 @@ log_dir = 'logs/log_' + str(time.time())[-5:]
 os.mkdir(log_dir)
 
 
-# In[12]:
+# In[ ]:
 
 
 def InitAssignFn(sess):
     sess.run(init_assign_op, init_feed_dict)
 tf.contrib.slim.learning.train(train_op,
-                               '/home/syd/work/personlab/'+log_dir,
+                               '/home/ubuntu/personlab/'+log_dir,
                                init_fn=InitAssignFn,
                                log_every_n_steps=100,
                                save_summaries_secs=30,
