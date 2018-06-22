@@ -1,11 +1,9 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[7]:
 
 
-get_ipython().run_line_magic('load_ext', 'autoreload')
-get_ipython().run_line_magic('autoreload', '')
 import tensorflow as tf
 import numpy as np
 import surreal, config
@@ -22,7 +20,7 @@ for x in surreal.load():
 '''
 
 
-# In[2]:
+# In[8]:
 
 
 TENSOR_INFO = [
@@ -65,7 +63,7 @@ for tensor, info in zip(input_tensors, TENSOR_INFO):
     tensors[info['name']] = tensor
 
 
-# In[3]:
+# In[9]:
 
 
 config.STRIDE = 16
@@ -194,13 +192,13 @@ test_cell = TestCell(is_training=True)
 pred_sum, _ = tf.nn.dynamic_rnn(test_cell, tensors['image'], sequence_length=tensors['seq_len'], dtype=tf.float32)
 
 
-# In[4]:
+# In[10]:
 
 
 pred_sum
 
 
-# In[5]:
+# In[11]:
 
 
 TOTAL_SHAPE = (config.BATCH_SIZE, config.MAX_FRAME_SIZE, config.TAR_H, config.TAR_W, sum(DEPTH))
@@ -208,25 +206,28 @@ pred_sum = tf.reshape(pred_sum, TOTAL_SHAPE)
 hm_0_out, hm_1_out, so_x_out, so_y_out, mo_x_out, mo_y_out = tf.split(pred_sum, DEPTH, axis=-1)
 
 
-# In[6]:
+# In[19]:
 
 
 hm_out = tf.stack([hm_0_out, hm_1_out], axis=-1)
 hm_true = tf.one_hot(tensors['hm'], 2)
+disk_only_s = tf.cast(tensors['hm'], tf.float32)
+disk_only_m = tf.gather(disk_only_s, config.EDGES[:,0], axis=-1)
+print(disk_only_s.shape, disk_only_m.shape, disk_only_s)
 
 
-# In[7]:
+# In[20]:
 
 
 tf.losses.softmax_cross_entropy(hm_true, hm_out, weights=4.0)
-tf.losses.absolute_difference(tensors['so_x'], so_x_out, weights=1.0 / config.RADIUS)
-tf.losses.absolute_difference(tensors['so_y'], so_y_out, weights=1.0 / config.RADIUS)
-tf.losses.absolute_difference(tensors['mo_x'], mo_x_out, weights=0.5 / config.RADIUS)
-tf.losses.absolute_difference(tensors['mo_y'], mo_y_out, weights=0.5 / config.RADIUS)
+tf.losses.absolute_difference(tensors['so_x'], so_x_out*disk_only_s, weights=1.0 / config.RADIUS)
+tf.losses.absolute_difference(tensors['so_y'], so_y_out*disk_only_s, weights=1.0 / config.RADIUS)
+tf.losses.absolute_difference(tensors['mo_x'], mo_x_out*disk_only_m, weights=0.5 / config.RADIUS)
+tf.losses.absolute_difference(tensors['mo_y'], mo_y_out*disk_only_m, weights=0.5 / config.RADIUS)
 tf.losses.get_losses()
 
 
-# In[8]:
+# In[21]:
 
 
 losses = tf.losses.get_losses()
@@ -236,7 +237,7 @@ loss = tf.losses.get_total_loss()
 tf.summary.scalar('losses/total_loss', loss)
 
 
-# In[9]:
+# In[22]:
 
 
 tf.summary.scalar('val/hm_sum', tf.reduce_sum(hm_out))
@@ -260,7 +261,7 @@ for v in variables:
 init_assign_op, init_feed_dict = slim.assign_from_checkpoint(checkpoint_path, restore_map)
 
 
-# In[10]:
+# In[23]:
 
 
 import time, os
@@ -269,7 +270,7 @@ log_dir = 'logs/log_' + str(time.time())[-5:]
 os.mkdir(log_dir)
 
 
-# In[11]:
+# In[24]:
 
 
 def InitAssignFn(sess):
