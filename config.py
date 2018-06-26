@@ -1,16 +1,16 @@
 import numpy as np
 
-TAR_H = 400
-TAR_W = 400
+TAR_H = 401
+TAR_W = 401
 
 
 NUM_GPUS = 1
-BATCH_SIZE = 2
+BATCH_SIZE = 10
 PREFETCH_SIZE = 1
 
 NUM_KP = 16
-NUM_EDGE = 15
-MAX_FRAME_SIZE = 5
+NUM_EDGE = 30
+MAX_FRAME_SIZE = 10
 NUM_RECURRENT = 2
 
 RADIUS = 32
@@ -57,3 +57,6 @@ EDGES = np.array([
     (13, 14),
     (14, 15),
 ])
+
+EDGES = np.concatenate([EDGES, EDGES[:, ::-1]], axis=0)
+

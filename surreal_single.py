@@ -53,6 +53,7 @@ def load():
                 kps.append((x, y, c))
             kp_list.append([np.array(kps)])
         kp_list = np.array(kp_list)
+        '''
         for i in range(num_frame // config.MAX_FRAME_SIZE):
             f_i_s = i * config.MAX_FRAME_SIZE
             f_i_e = f_i_s + config.MAX_FRAME_SIZE
@@ -69,7 +70,6 @@ def load():
             if np.sum(hm[i,...]) < config.AREA_LB:
                 continue
             yield img[i], hm[i], so_x[i], so_y[i], mo_x[i], mo_y[i]
-        '''
 
         
 def transform(frames, kp_list):
