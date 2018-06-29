@@ -133,16 +133,16 @@ def transform(frames, kp_list):
                 k_j = config.EDGES[e_i, 1]
                 if kp[2, k_i] == 0 or kp[2, k_j] == 0:
                     continue
-                cx = np.round(kp[0, kp_i])
-                cy = np.round(kp[1, kp_i])
+                cx = np.round(kp[0, k_i])
+                cy = np.round(kp[1, k_i])
                 mm = (0 <= x + cx) & (x + cx < config.TAR_W) & \
                      (0 <= y + cy) & (y + cy < config.TAR_H) & m
                 ym = y[mm]
                 xm = x[mm]
                 y_i = (ym + cy).astype('i')
                 x_i = (xm + cx).astype('i')
-                dy = kp[0, k_j] - cy
-                dx = kp[1, k_j] - cx
+                dx = kp[0, k_j] - cx
+                dy = kp[1, k_j] - cy
                 mo_x[f_i, y_i, x_i, e_i] = -xm + dx
                 mo_y[f_i, y_i, x_i, e_i] = -ym + dy
     return (frames, hm, so_x, so_y, mo_x, mo_y, len(frames))
