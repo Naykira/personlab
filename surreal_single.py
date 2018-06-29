@@ -74,7 +74,7 @@ def load():
         
 def transform(frames, kp_list):
     fn, h, w, d = frames.shape
-    is_flip = random.randint(0, 1) == 0
+    is_flip = False #random.randint(0, 1) == 0
     sf = random.uniform(1, 1.3)
     sf = min(config.TAR_W/w, config.TAR_H/h) * sf
     offset_w = random.uniform(0, max(0, w * sf - config.TAR_W)) // 2
