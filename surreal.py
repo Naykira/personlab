@@ -1,9 +1,9 @@
 import random, os, itertools
-import config
 import tensorflow as tf
 import numpy as np
 import cv2 as cv
 import scipy.io as sio
+from . import config
 
 
 
@@ -16,7 +16,7 @@ def get_file_list(path):
             name = fn.split('.')[0]
             res.append(path + name)
     return res
-    
+
 
 def load():
     path_list = get_file_list(config.TRAIN_DATA_BASE_DIR)
@@ -24,7 +24,7 @@ def load():
     Y = np.tile(np.arange(config.SURREAL_H), [config.SURREAL_W, 1]).transpose()
     for p in itertools.cycle(path_list):
         cap = cv.VideoCapture(p + '.mp4')
-        
+
         frames = []
         while(True):
             ret, frame = cap.read()
@@ -35,7 +35,7 @@ def load():
         num_frame = len(frames)
         if num_frame < config.MAX_FRAME_SIZE:
             continue
-            
+
         info = sio.loadmat(p + '_info.mat')
         seg = sio.loadmat(p + '_segm.mat')
         kp_list = []
@@ -63,15 +63,49 @@ def load():
             if np.sum(hm) < config.AREA_LB * config.MAX_FRAME_SIZE:
                 continue
             yield img, hm, so_x, so_y, mo_x, mo_y, num_frames
-        '''
+
+
+def load_single():
+    path_list = get_file_list(config.TRAIN_DATA_BASE_DIR)
+    X = np.tile(np.arange(config.SURREAL_W), [config.SURREAL_H, 1])
+    Y = np.tile(np.arange(config.SURREAL_H), [config.SURREAL_W, 1]).transpose()
+    for p in itertools.cycle(path_list):
+        cap = cv.VideoCapture(p + '.mp4')
+
+        frames = []
+        while(True):
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames.append(frame)
+        frames = np.array(frames)
+        num_frame = len(frames)
+        if num_frame < config.MAX_FRAME_SIZE:
+            continue
+
+        info = sio.loadmat(p + '_info.mat')
+        seg = sio.loadmat(p + '_segm.mat')
+        kp_list = []
+        for f_i in range(num_frame):
+            kps = []
+            for k_i, sk_i in enumerate(config.SURREAL_KP_MAP):
+                if np.sum(seg['segm_%d' % (f_i + 1)] == (sk_i + 1)) > 0:
+                    x = info['joints2D'][0, sk_i, f_i]
+                    y = info['joints2D'][1, sk_i, f_i]
+                    c = 2
+                else:
+                    x = 0
+                    y = 0
+                    c = 0
+                kps.append((x, y, c))
+            kp_list.append([np.array(kps)])
+        kp_list = np.array(kp_list)
         img, hm, so_x, so_y, mo_x, mo_y, num_frames = transform(frames, kp_list)
         for i in range(num_frame):
             if np.sum(hm[i,...]) < config.AREA_LB:
                 continue
             yield img[i], hm[i], so_x[i], so_y[i], mo_x[i], mo_y[i]
-        '''
 
-        
 def transform(frames, kp_list):
     fn, h, w, d = frames.shape
     is_flip = False #random.randint(0, 1) == 0
@@ -86,7 +120,7 @@ def transform(frames, kp_list):
         m = m.dot(np.array([[-1., 0., 0.], [0., 1., 0.], [0., 0., 1.]])) # flip
     m = m.dot(np.array([[sf, 0., 0.], [0., sf, 0.], [0., 0., 1.]])) # scale
     m = m.dot(np.array([[1., 0., -w//2], [0., 1., -h//2], [0., 0., 1.]])) # transform to center
-    
+
     frames = [cv.warpAffine(img, m[0:2], (config.TAR_W, config.TAR_H)) for img in frames]
     new_kp_list = []
     for kpl in kp_list:
@@ -146,4 +180,3 @@ def transform(frames, kp_list):
                 mo_x[f_i, y_i, x_i, e_i] = -xm + dx
                 mo_y[f_i, y_i, x_i, e_i] = -ym + dy
     return (frames, hm, so_x, so_y, mo_x, mo_y, len(frames))
-

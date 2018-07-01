@@ -27,8 +27,8 @@ MIDDLE_OFFSET_LOSS_WEIGHT = 0.5
 
 SURREAL_H = 240
 SURREAL_W = 320
-TRAIN_DATA_BASE_DIR = '/Users/minsubsim/work/personlab2/cmu/train/'
-VAL_DATA_BASE_DIR = '/Users/minsubsim/work/personlab2/cmu/val/'
+TRAIN_DATA_BASE_DIR = 'dataset/surreal/cmu/train/'
+VAL_DATA_BASE_DIR = 'dataset/surreal/cmu/val/'
 
 SURREAL_KP_MAP = [
     15, #턱 0
@@ -59,4 +59,3 @@ EDGES = np.array([
 ])
 
 EDGES = np.concatenate([EDGES, EDGES[:, ::-1]], axis=0)
-
